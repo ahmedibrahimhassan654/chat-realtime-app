@@ -1,126 +1,97 @@
 const User = require("./models/User");
 const Message = require("./models/Message");
 
+const activeUsers = new Map(); // In-memory map to track active users
+
 const handleSocketEvents = (io) => {
-  io.on("connection", async (socket) => {
+  io.on("connection", (socket) => {
     console.log("New client connected:", socket.id);
 
     // Restore username on reconnection
-    socket.on("restore-session", async (username) => {
+    socket.on("restore-session", (username) => {
       console.log(`${username} restored session.`);
       socket.username = username;
 
-      // Update user as connected
-      await User.findOneAndUpdate(
-        { username },
-        { connectedAt: new Date(), disconnectedAt: null },
-        { new: true }
-      );
+      // Add user to active users
+      activeUsers.set(socket.id, username);
 
       // Emit updated active users list
-      await emitActiveUsers(io);
-
-      // Send previous chat history to the client
-      const messages = await Message.find()
-        .sort({ timestamp: -1 })
-        .limit(50)
-        .lean();
-      socket.emit("previous-messages", messages.reverse());
+      emitActiveUsers(io);
     });
 
     // Handle user joining
-    socket.on("join", async (username) => {
+    socket.on("join", (username) => {
       console.log(`${username} joined the chat`);
-
-      let user = await User.findOne({ username });
-      if (!user) {
-        user = new User({ username });
-        await user.save();
-      } else {
-        user.connectedAt = new Date();
-        user.disconnectedAt = null;
-        await user.save();
-      }
-
       socket.username = username;
 
-      // Emit updated active users list
-      await emitActiveUsers(io);
+      // Add user to active users
+      activeUsers.set(socket.id, username);
 
-      // Send chat history to the user
-      const messages = await Message.find()
-        .sort({ timestamp: -1 })
-        .limit(50)
-        .lean();
-      socket.emit("previous-messages", messages.reverse());
+      // Emit updated active users list
+      emitActiveUsers(io);
 
       // Notify others
       socket.broadcast.emit("user-joined", { username });
     });
-
     // Handle sending a message
     socket.on("message", async (data) => {
+      if (!socket.username) {
+        console.error("Message received from a socket without a username.");
+        return;
+      }
+
       console.log("Message received:", data);
 
       const newMessage = new Message({
-        sender: data.sender,
+        sender: socket.username, // Use socket.username for consistency
         text: data.text,
         timestamp: new Date(),
       });
 
       try {
         await newMessage.save();
-        io.emit("new-message", { sender: data.sender, text: data.text });
+        io.emit("new-message", {
+          sender: socket.username, // Use socket.username
+          text: data.text,
+        });
       } catch (error) {
         console.error("Error saving message to DB:", error);
       }
     });
-
     // Handle user leaving
-    socket.on("leave", async () => {
+    socket.on("leave", () => {
       if (socket.username) {
         console.log(`${socket.username} left the chat`);
 
-        const user = await User.findOne({ username: socket.username });
-        if (user) {
-          user.disconnectedAt = new Date();
-          await user.save();
-        }
+        // Remove user from active users
+        activeUsers.delete(socket.id);
 
         // Emit updated active users list
-        await emitActiveUsers(io);
+        emitActiveUsers(io);
         io.emit("user-left", { username: socket.username });
       }
     });
 
     // Handle client disconnection
-    socket.on("disconnect", async () => {
+    socket.on("disconnect", () => {
       console.log("Client disconnected:", socket.id);
 
       if (socket.username) {
-        const user = await User.findOne({ username: socket.username });
-        if (user) {
-          user.disconnectedAt = new Date();
-          await user.save();
+        // Remove user from active users
+        activeUsers.delete(socket.id);
 
-          // Emit updated active users list
-          await emitActiveUsers(io);
-          io.emit("user-left", { username: socket.username });
-        }
+        // Emit updated active users list
+        emitActiveUsers(io);
+        io.emit("user-left", { username: socket.username });
       }
     });
   });
 };
 
 // Helper function to emit the updated active users list
-const emitActiveUsers = async (io) => {
-  const activeUsers = await User.find({ disconnectedAt: null }).select(
-    "username -_id"
-  );
-  io.emit(
-    "active-users",
-    activeUsers.map((u) => u.username)
-  );
+const emitActiveUsers = (io) => {
+  const users = Array.from(activeUsers.values());
+  io.emit("active-users", users);
 };
 
 module.exports = handleSocketEvents;
