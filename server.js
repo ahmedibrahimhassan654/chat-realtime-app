@@ -1,9 +1,12 @@
 require("dotenv").config();
+// Import Routes
+const chatRoutes = require("./routes/chatRoutes");
+const errorHandler = require("./middleware/errorHandler");
 const express = require("express");
 const mongoose = require("mongoose");
 const http = require("http");
 const { Server } = require("socket.io");
-
+const connectDB = require("./utils/db");
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
@@ -11,17 +14,11 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.use(express.json());
 
 // MongoDB Connection
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+connectDB();
 
-// Import Routes
-const chatRoutes = require("./routes/chatRoutes");
 app.use("/api", chatRoutes);
+// Error handling middleware
+app.use(errorHandler);
 
 // Start Server
 const PORT = process.env.PORT || 5000;
