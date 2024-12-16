@@ -5,17 +5,23 @@ const SOCKET_URL = "http://localhost:5000";
 
 function App() {
   const [socket, setSocket] = useState(null);
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(
+    localStorage.getItem("username") || ""
+  );
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
-  const [isJoined, setIsJoined] = useState(false);
+  const [isJoined, setIsJoined] = useState(!!localStorage.getItem("username"));
 
   useEffect(() => {
     const newSocket = io(SOCKET_URL);
     setSocket(newSocket);
 
-    // Fetch and listen for events
+    if (localStorage.getItem("username")) {
+      const storedUsername = localStorage.getItem("username");
+      newSocket.emit("restore-session", storedUsername);
+    }
+
     newSocket.on("previous-messages", (fetchedMessages) => {
       setMessages(fetchedMessages);
     });
@@ -71,7 +77,6 @@ function App() {
       setMessages([]);
       setUsers([]);
       setUsername("");
-      socket.disconnect(); // Disconnect the socket
     }
   };
 
