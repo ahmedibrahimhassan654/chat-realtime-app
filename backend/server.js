@@ -17,6 +17,27 @@ app.use(express.json());
 connectDB();
 
 app.use("/api", chatRoutes);
+// Log when a client connects
+io.on("connection", (socket) => {
+  console.log("New client connected:", socket.id);
+
+  // Log "join" event
+  socket.on("join", (username) => {
+    console.log(`${username} joined the chat`);
+    socket.broadcast.emit("user-joined", { username });
+  });
+
+  // Log "message" event
+  socket.on("message", (data) => {
+    console.log("Message received:", data);
+    io.emit("new-message", data); // Broadcast the message to all clients
+  });
+
+  // Log when a client disconnects
+  socket.on("disconnect", () => {
+    console.log("Client disconnected:", socket.id);
+  });
+});
 // Error handling middleware
 app.use(errorHandler);
 
