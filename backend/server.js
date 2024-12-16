@@ -2,6 +2,7 @@ require("dotenv").config();
 // Import Routes
 const chatRoutes = require("./routes/chatRoutes");
 const errorHandler = require("./middleware/errorHandler");
+const handleSocketEvents = require("./socket");
 const express = require("express");
 const mongoose = require("mongoose");
 const http = require("http");
@@ -18,26 +19,10 @@ connectDB();
 
 app.use("/api", chatRoutes);
 // Log when a client connects
-io.on("connection", (socket) => {
-  console.log("New client connected:", socket.id);
+const activeUsers = {};
 
-  // Log "join" event
-  socket.on("join", (username) => {
-    console.log(`${username} joined the chat`);
-    socket.broadcast.emit("user-joined", { username });
-  });
-
-  // Log "message" event
-  socket.on("message", (data) => {
-    console.log("Message received:", data);
-    io.emit("new-message", data); // Broadcast the message to all clients
-  });
-
-  // Log when a client disconnects
-  socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id);
-  });
-});
+// Set up Socket.IO events
+handleSocketEvents(io);
 // Error handling middleware
 app.use(errorHandler);
 
