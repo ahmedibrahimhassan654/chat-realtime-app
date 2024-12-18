@@ -13,18 +13,15 @@ const allowedOrigins = [
 
 const io = new Server(server, {
   cors: {
-    origin: (origin, callback) => {
-      if (allowedOrigins.includes(origin) || !origin) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS not allowed for this origin"));
-      }
-    },
+    origin: [
+      //   "https://chat-realtime-frontend.vercel.app",
+      "http://localhost:3000",
+    ], // Adjust with your frontend's URL
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
-    credentials: false,
+    credentials: true, // Set to true if you need credentials like cookies
   },
-  transports: ["websocket", "polling"], // Ensure polling is enabled as a fallback
+  transports: ["websocket", "polling"], // Ensure WebSocket and Polling are both allowed
 });
 
 const handleSocketEvents = require("./socket");
