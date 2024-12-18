@@ -7,23 +7,16 @@ const app = require("./app"); // Reuse app logic
 // Create HTTP server and initialize Socket.IO
 const server = http.createServer(app);
 
-// Explicitly allow your local React app
-const allowedOrigins = [
-  "http://localhost:3000", // For local development
-  "https://your-react-app.vercel.app", // For production (Replace with actual URL)
-];
-
+// Configure CORS to allow the frontend origin
 const io = new Server(server, {
   cors: {
-    origin: (origin, callback) => {
-      if (allowedOrigins.includes(origin) || !origin) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS not allowed for this origin"));
-      }
-    },
+    origin: [
+      "http://localhost:3000", // For local development
+      "https://your-react-app.vercel.app", // For production (Replace with actual URL)
+    ], // Allow both local and production origins
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
+    credentials: false, // Allow credentials (cookies, session, etc.)
   },
 });
 
