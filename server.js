@@ -1,15 +1,16 @@
-require("dotenv").config();
 const cors = require("cors");
-
-const app = require("./app"); // Separate app logic into its own file
-const http = require("http");
 const { Server } = require("socket.io");
+const http = require("http");
+require("dotenv").config();
+const app = require("./app"); // Reuse app logic
 
 // Create HTTP server and initialize Socket.IO
 const server = http.createServer(app);
+
+// Explicitly allow your local React app
 const allowedOrigins = [
-  "https://your-react-app.vercel.app", // Replace with actual deployed React app URL
-  "http://localhost:3000", // Local development
+  "http://localhost:3000", // For local development
+  "https://your-react-app.vercel.app", // For production (Replace with actual URL)
 ];
 
 const io = new Server(server, {
@@ -18,10 +19,11 @@ const io = new Server(server, {
       if (allowedOrigins.includes(origin) || !origin) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        callback(new Error("CORS not allowed for this origin"));
       }
     },
     methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type"],
   },
 });
 
