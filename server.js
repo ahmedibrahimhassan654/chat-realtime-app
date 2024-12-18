@@ -8,21 +8,30 @@ const app = require("./app"); // Reuse app logic
 const server = http.createServer(app);
 
 // Configure CORS to allow the frontend origin
+const allowedOrigins = [
+  "http://localhost:3000", // For local development
+  //   "https://your-react-app.vercel.app", // Replace with the correct production URL
+];
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:3000", // For local development
-      "https://your-react-app.vercel.app", // For production (Replace with actual URL)
-    ], // Allow both local and production origins
+    origin: (origin, callback) => {
+      if (allowedOrigins.includes(origin) || !origin) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS not allowed for this origin"));
+      }
+    },
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
-    credentials: false, // Allow credentials (cookies, session, etc.)
+    credentials: false, // Set to true if needed
   },
+  transports: ["websocket", "polling"], // Make sure both websocket and polling are allowed
 });
 
+// Pass socket.io events handling logic
 const handleSocketEvents = require("./socket");
 handleSocketEvents(io);
 
-// Start server locally
+// Start the server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

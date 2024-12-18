@@ -12,7 +12,7 @@ connectDB();
 
 // Routes
 app.use("/api", chatRoutes);
-app.use("/", (req, res) => res.send("hello"));
+app.use("/", (req, res) => res.send("hello now"));
 
 // Error handling middleware
 app.use(errorHandler);
